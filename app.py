@@ -3,6 +3,14 @@ import polars as pl
 import plotly.express as px
 from datetime import datetime, timezone
 
+from dashboard_helpers import (
+    GRANULARITY_OPTIONS,
+    TIME_COL,
+    get_aggregated_data,
+    get_or_create_cache_dir,
+    profiled,
+)
+
 
 st.set_page_config(page_title="Speedsnake", layout="wide")
 st.title("Speedtest Dashboard")
@@ -29,55 +37,63 @@ def load_data() -> pl.DataFrame:
     )
 
 
-df = load_data()
+with profiled("Data load") as p_load:
+    df = load_data()
 
 min_date = df["timestamp"].min().date()
 max_date = df["timestamp"].max().date()
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 with col1:
     start_date = st.date_input("Start date", value=min_date, min_value=min_date, max_value=max_date)
 with col2:
     end_date = st.date_input("End date", value=max_date, min_value=min_date, max_value=max_date)
+with col3:
+    granularity = st.selectbox(
+        "Granularity",
+        options=list(GRANULARITY_OPTIONS.keys()),
+        index=1,  # Default to "Hourly"
+    )
 
 filtered = df.filter(
     (pl.col("timestamp") >= datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc))
     & (pl.col("timestamp") <= datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc))
 )
 
-hourly = (
-    filtered
-    .with_columns(pl.col("timestamp").dt.truncate("1h").alias("hour"))
-    .group_by("hour")
-    .agg(
-        pl.col("download_mbps").mean(),
-        pl.col("upload_mbps").mean(),
-        pl.col("ping_ms").mean(),
+cache_dir = get_or_create_cache_dir(st.session_state)
+
+with profiled("Filter + aggregation") as p_agg:
+    aggregated, cache_hit = get_aggregated_data(
+        filtered, start_date, end_date, granularity, cache_dir
     )
-    .sort("hour")
-)
+
+# Profiling info
+with st.expander("Profiling"):
+    st.caption(f"Data load: {p_load.elapsed:.3f}s")
+    st.caption(f"Filter + aggregation: {p_agg.elapsed:.3f}s")
+    st.caption(f"Cache: {'hit' if cache_hit else 'miss'}")
 
 st.subheader("Download & Upload Speed (Higher is better)")
-speed_long = hourly.unpivot(
-    index="hour",
+speed_long = aggregated.unpivot(
+    index=TIME_COL,
     on=["download_mbps", "upload_mbps"],
     variable_name="metric",
     value_name="Mbps",
 )
 fig_speed = px.line(
     speed_long.to_pandas(),
-    x="hour",
+    x=TIME_COL,
     y="Mbps",
     color="metric",
-    labels={"hour": "Time", "metric": "Metric"},
+    labels={TIME_COL: "Time", "metric": "Metric"},
 )
 st.plotly_chart(fig_speed, use_container_width=True)
 
 st.subheader("Ping Latency (Lower is better)")
 fig_ping = px.line(
-    hourly.to_pandas(),
-    x="hour",
+    aggregated.to_pandas(),
+    x=TIME_COL,
     y="ping_ms",
-    labels={"hour": "Time", "ping_ms": "Ping (ms)"},
+    labels={TIME_COL: "Time", "ping_ms": "Ping (ms)"},
 )
 st.plotly_chart(fig_ping, use_container_width=True)
