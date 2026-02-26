@@ -10,11 +10,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - When implementing a feature, always come up wiht a plan before making any changes
 - You are a TDD style developer, always create unit tests to capture how you want the code to behave
-- If requirements are not clear, always ask for clarity
+- If requirements are not clear, always ask for clarity, do not guess
 - Always commit in small chunks. Unit tests and linting must pass before committing
 - Be clear and concise with code. Leave comments explaining why things are done if not obvious
 - Add regular logging without being too verbose (i.e. at different checkpoints in the code)
 - Write code in a reusable manner
+- At the end of each plan, let the user know of any unresolved questions
 
 ## Never Do This
 - Change main code when there are no tests that capture functionality; add unit tests before making any changes

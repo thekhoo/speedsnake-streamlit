@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "SCP: Copy uploads from Raspberry Pi",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "scp -r ${input:piAddress}:~/internet-speed-checker/uploads/ ${workspaceFolder}/"
+    },
+    {
+      "name": "Docker: Start Streamlit",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "docker compose up"
+    },
+    {
+      "name": "Docker: Start Streamlit (rebuild)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "docker compose up --build"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "piAddress",
+      "type": "promptString",
+      "description": "Raspberry Pi address (e.g. raspberrypi@172.22.22.22)"
+    }
+  ]
+}

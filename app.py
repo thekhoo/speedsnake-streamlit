@@ -90,10 +90,17 @@ fig_speed = px.line(
 st.plotly_chart(fig_speed, use_container_width=True)
 
 st.subheader("Ping Latency (Lower is better)")
+ping_long = aggregated.unpivot(
+    index=TIME_COL,
+    on=["ping_ms"],
+    variable_name="metric",
+    value_name="Ping (ms)",
+)
 fig_ping = px.line(
-    aggregated.to_pandas(),
+    ping_long.to_pandas(),
     x=TIME_COL,
-    y="ping_ms",
-    labels={TIME_COL: "Time", "ping_ms": "Ping (ms)"},
+    y="Ping (ms)",
+    color="metric",
+    labels={TIME_COL: "Time", "metric": "Metric"},
 )
 st.plotly_chart(fig_ping, use_container_width=True)
